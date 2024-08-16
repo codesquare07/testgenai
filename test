@@ -1,0 +1,202 @@
+import sqlite3
+
+from langchain.chains import create_sql_query_chain, LLMChain
+from langchain.prompts import PromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.output_parsers import StrOutputParser
+from langchain_community.utilities import SQLDatabase
+from langchain_community.tools.sql_database.tool import QuerySQLDataBaseTool
+from operator import itemgetter
+from langchain_core.runnables import RunnablePassthrough
+
+import google.generativeai as genai
+import sqlite3
+sql_file_path = 'data1.sql'
+import os
+os.environ["GOOGLE_API_KEY"] = "****"
+
+# Connect to (or create) the SQLite database
+conn = sqlite3.connect('trade.db')
+cursor = conn.cursor()
+
+# Read the SQL file
+with open(sql_file_path, 'r') as file:
+    sql_script = file.read()
+
+# Execute the SQL script
+cursor.executescript(sql_script)
+conn.commit()
+
+# Optionally, verify that data was loaded correctly
+cursor.execute("SELECT * FROM Trade")  # Replace 'your_table' with your actual table name
+rows = cursor.fetchall()
+
+
+db = SQLDatabase.from_uri("sqlite:///trade.db")
+
+from langchain_community.agent_toolkits import create_sql_agent
+from langchain.agents.agent_types import AgentType
+from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
+from langchain.memory import ConversationBufferMemory
+
+CUSTOM_SUFFIX = """Begin!
+
+Relevant pieces of previous conversation:
+{history}
+(Note: Only reference this information if it is relevant to the current query.)
+
+Question: {input}
+
+{agent_scratchpad}
+"""
+
+llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0)
+memory = ConversationBufferMemory(
+                                input_key="input", 
+                                output_key='output',
+                                memory_key="history",
+                                return_messages= True
+                                  )
+agent_executor = create_sql_agent(llm,
+                                    toolkit=SQLDatabaseToolkit(db=db, llm=llm),
+                                    agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+                                    input_variables=["input", "agent_scratchpad", "history"],
+                                    suffix=CUSTOM_SUFFIX,
+                                    verbose=True,
+                                    agent_executor_kwargs={
+                                        "memory": memory#,
+                                        #"return_intermediate_steps": True
+                                    }
+                                    )
+
+
+while True:
+    query = input("Enter your query: ")
+    if query == "stop":
+        break
+    response = agent_executor.invoke({"input": query})
+    #memory.save_context(input_str=query, output_str=response)
+    print(response)
+    
+DROP TABLE IF EXISTS Trade;
+
+
+CREATE TABLE Trade
+
+
+(
+
+
+    TradeId INTEGER  NOT NULL,
+
+
+    Client NVARCHAR(20)  NOT NULL,
+
+
+    BuySell NVARCHAR(20)  NOT NULL,
+
+
+    Account NVARCHAR(30),
+
+
+    Ticker NVARCHAR(20) ,
+
+
+    Qty INTEGER,
+
+
+    Price FLOAT
+
+);
+DROP TABLE IF EXISTS Customer;
+
+
+CREATE TABLE [Customer]
+(
+    [CustomerId] INTEGER  NOT NULL,
+    [FirstName] NVARCHAR(40)  NOT NULL,
+    [LastName] NVARCHAR(20)  NOT NULL,
+    [Company] NVARCHAR(80),
+    [Address] NVARCHAR(70),
+    [City] NVARCHAR(40),
+    [State] NVARCHAR(40),
+    [Country] NVARCHAR(40),
+    [PostalCode] NVARCHAR(10),
+    [Phone] NVARCHAR(24),
+    [Fax] NVARCHAR(24),
+    [Email] NVARCHAR(60)  NOT NULL,
+    [SupportRepId] INTEGER
+);
+
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD1','BMW','BUY','A1','ED',10,20.0   );
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD2','BMW','SELL','A1','ED',10,20.0   );
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD3','BMW','BUY','A1','ED',10,20.0   );
+
+
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD5','APP','BUY','A2','ED',10,20.0   );
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD6','APP','SELL','A2','ED',10,20.0   );
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD7','APP','SELL','A3','ED',10,20.0   );
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD8','APP','BUY','A2','ED',10,20.0   );
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD9','APP','SELL','A3','ED',10,20.0   );
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD10','MERC','BUY','A3','ED',10,20.0   );
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD11','MERC','SELL','A3','ED',10,20.0   );
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD12','MERC','BUY','A4','ED',10,20.0   );
+
+
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD14','MERC','BUY','A4','ED',10,20.0   );
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD15','VOLVO','SELL','A4','ED',10,20.0  );
+
+
+INSERT INTO Trade (TradeId,Client,BuySell , Account , Ticker ,Qty ,Price ) values ('TRD16','VOLVO','BUY','A4','ED',10,20.0   );
+
+
+
+INSERT INTO [Customer] ([CustomerId], [FirstName], [LastName], [Company], [Address], [City], [State], [Country], [PostalCode], [Phone], [Fax], [Email], [SupportRepId]) VALUES
+    (1, 'Luís', 'Gonçalves', 'Embraer - Empresa Brasileira de Aeronáutica S.A.', 'Av. Brigadeiro Faria Lima, 2170', 'São José dos Campos', 'SP', 'Brazil', '12227-000', '+55 (12) 3923-5555', '+55 (12) 3923-5566', 'luisg@embraer.com.br', 3),
+    (2, 'Leonie', 'Köhler', NULL, 'Theodor-Heuss-Straße 34', 'Stuttgart', NULL, 'Germany', '70174', '+49 0711 2842222', NULL, 'leonekohler@surfeu.de', 5),
+    (3, 'François', 'Tremblay', NULL, '1498 rue Bélanger', 'Montréal', 'QC', 'Canada', 'H2G 1A7', '+1 (514) 721-4711', NULL, 'ftremblay@gmail.com', 3),
+    (4, 'Bjørn', 'Hansen', NULL, 'Ullevålsveien 14', 'Oslo', NULL, 'Norway', '0171', '+47 22 44 22 22', NULL, 'bjorn.hansen@yahoo.no', 4),
+    (5, 'František', 'Wichterlová', 'JetBrains s.r.o.', 'Klanova 9/506', 'Prague', NULL, 'Czech Republic', '14700', '+420 2 4172 5555', '+420 2 4172 5555', 'frantisekw@jetbrains.com', 4),
+    (6, 'Helena', 'Holý', NULL, 'Rilská 3174/6', 'Prague', NULL, 'Czech Republic', '14300', '+420 2 4177 0449', NULL, 'hholy@gmail.com', 5),
+    (7, 'Astrid', 'Gruber', NULL, 'Rotenturmstraße 4, 1010 Innere Stadt', 'Vienne', NULL, 'Austria', '1010', '+43 01 5134505', NULL, 'astrid.gruber@apple.at', 5),
+    (8, 'Daan', 'Peeters', NULL, 'Grétrystraat 63', 'Brussels', NULL, 'Belgium', '1000', '+32 02 219 03 03', NULL, 'daan_peeters@apple.be', 4),
+    (9, 'Kara', 'Nielsen', NULL, 'Sønder Boulevard 51', 'Copenhagen', NULL, 'Denmark', '1720', '+453 3331 9991', NULL, 'kara.nielsen@jubii.dk', 4),
+    (10, 'Eduardo', 'Martins', 'Woodstock Discos', 'Rua Dr. Falcão Filho, 155', 'São Paulo', 'SP', 'Brazil', '01007-010', '+55 (11) 3033-5446', '+55 (11) 3033-4564', 'eduardo@woodstock.com.br', 4),
+    (11, 'Alexandre', 'Rocha', 'Banco do Brasil S.A.', 'Av. Paulista, 2022', 'São Paulo', 'SP', 'Brazil', '01310-200', '+55 (11) 3055-3278', '+55 (11) 3055-8131', 'alero@uol.com.br', 5),
+    (12, 'Roberto', 'Almeida', 'Riotur', 'Praça Pio X, 119', 'Rio de Janeiro', 'RJ', 'Brazil', '20040-020', '+55 (21) 2271-7000', '+55 (21) 2271-7070', 'roberto.almeida@riotur.gov.br', 3),
+    (13, 'Fernanda', 'Ramos', NULL, 'Qe 7 Bloco G', 'Brasília', 'DF', 'Brazil', '71020-677', '+55 (61) 3363-5547', '+55 (61) 3363-7855', 'fernadaramos4@uol.com.br', 4),
+    (14, 'Mark', 'Philips', 'Telus', '8210 111 ST NW', 'Edmonton', 'AB', 'Canada', 'T6G 2C7', '+1 (780) 434-4554', '+1 (780) 434-5565', 'mphilips12@shaw.ca', 5),
+    (15, 'Jennifer', 'Peterson', 'Rogers Canada', '700 W Pender Street', 'Vancouver', 'BC', 'Canada', 'V6C 1G8', '+1 (604) 688-2255', '+1 (604) 688-8756', 'jenniferp@rogers.ca', 3),
+    (16, 'Frank', 'Harris', 'Google Inc.', '1600 Amphitheatre Parkway', 'Mountain View', 'CA', 'USA', '94043-1351', '+1 (650) 253-0000', '+1 (650) 253-0000', 'fharris@google.com', 4),
+    (17, 'Jack', 'Smith', 'Microsoft Corporation', '1 Microsoft Way', 'Redmond', 'WA', 'USA', '98052-8300', '+1 (425) 882-8080', '+1 (425) 882-8081', 'jacksmith@microsoft.com', 5),
+    (18, 'Michelle', 'Brooks', NULL, '627 Broadway', 'New York', 'NY', 'USA', '10012-2612', '+1 (212) 221-3546', '+1 (212) 221-4679', 'michelleb@aol.com', 3),
+    (19, 'Tim', 'Goyer', 'Apple Inc.', '1 Infinite Loop', 'Cupertino', 'CA', 'USA', '95014', '+1 (408) 996-1010', '+1 (408) 996-1011', 'tgoyer@apple.com', 3),
+    (20, 'Dan', 'Miller', NULL, '541 Del Medio Avenue', 'Mountain View', 'CA', 'USA', '94040-111', '+1 (650) 644-3358', NULL, 'dmiller@comcast.com', 4),
+    (21, 'Kathy', 'Chase', NULL, '801 W 4th Street', 'Reno', 'NV', 'USA', '89503', '+1 (775) 223-7665', NULL, 'kachase@hotmail.com', 5),
+    (22, 'Heather', 'Leacock', NULL, '120 S Orange Ave', 'Orlando', 'FL', 'USA', '32801', '+1 (407) 999-7788', NULL, 'hleacock@gmail.com', 4);
