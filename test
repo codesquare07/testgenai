@@ -77,7 +77,24 @@ while True:
     response = agent_executor.invoke({"input": query})
     #memory.save_context(input_str=query, output_str=response)
     print(response)
-    
+
+
+
+streamlit
+google-generativeai
+python-dotenv
+langchain
+langchain-community
+langchain-openai
+langchain-google-genai
+langchain-google-vertexai
+PyPDF2
+chromadb
+faiss-cpu
+pdf2image
+db-sqlite3
+
+
 DROP TABLE IF EXISTS Trade;
 
 
